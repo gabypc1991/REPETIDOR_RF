@@ -577,9 +577,8 @@ def relay_on(ack, body, client):
 
     if send_pulse():
         registrar_evento(f"{nombre} - PULSO")
-        # notificar_orden_a_registrados(client, user_id, nombre, "Pulso")
-
-    actualizar_home_para_todos(client)
+        actualizar_home_para_todos(client)
+        # notificar_orden_a_registrados(client, user_id, nombre, "Pulso")    
 
 
 @app.action("relay_intermediate")
@@ -603,11 +602,11 @@ def relay_intermediate(ack, body, client):
 
     if send_intermediate_pulse():
         registrar_evento(f"{nombre} - Paso peaton OK")
+        actualizar_home_para_todos(client)
         # notificar_orden_a_registrados(client, user_id, nombre, "Peaton")
     else:
         registrar_evento(f"{nombre} - Paso peaton ERROR")
-
-    actualizar_home_para_todos(client)
+        actualizar_home_para_todos(client)
 
 
 @app.event("app_mention")
