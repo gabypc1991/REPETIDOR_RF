@@ -273,11 +273,13 @@ def usuario_puede_operar(user_id, nombre):
         if dueño == user_id:
             return True
 
-        registrar_evento(
-            f"{nombre}: {control_nombre} ya envio una orden, revisar que el porton esta abriendo/cerrando."
-        )
+        bloqueado_por = control_nombre
 
-        return False
+    registrar_evento(
+        f"{nombre}: {bloqueado_por} ya envio una orden, revisar que el porton esta abriendo/cerrando."
+    )
+
+    return False
 
 def registrar_evento(texto):
     with state_lock:
