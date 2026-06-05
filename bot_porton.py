@@ -20,6 +20,7 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 BASE_DIR = Path(__file__).resolve().parent
 USERS_FILE = BASE_DIR / "usuarios.json"
 ENV_FILE = BASE_DIR / ".env"
+CONTROL_TIMEOUT_SECONDS = 30
 
 
 def cargar_env():
@@ -76,6 +77,10 @@ usuarios_activos = set()
 buffers_por_usuario = {}
 eventos = []
 arduino = None
+
+control_usuario = None
+control_nombre = None
+control_expira = None
 
 state_lock = threading.Lock()
 serial_lock = threading.Lock()
@@ -234,6 +239,45 @@ def send_intermediate_pulse():
 # ==========================
 # EVENTOS / HOME
 # ==========================
+
+def verificar_control_activo():
+    global control_usuario, control_nombre, control_expira
+
+    ahora = datetime.now()
+
+    if control_expira and ahora >= control_expira:
+        control_usuario = None
+        control_nombre = None
+        control_expira = None
+
+    return control_usuario
+
+
+def tomar_control(user_id, nombre):
+    global control_usuario, control_nombre, control_expira
+
+    control_usuario = user_id
+    control_nombre = nombre
+    control_expira = datetime.now() + timedelta(
+        seconds=CONTROL_TIMEOUT_SECONDS
+    )
+
+def usuario_puede_operar(user_id, nombre):
+    with state_lock:
+        dueño = verificar_control_activo()
+
+        if dueño is None:
+            tomar_control(user_id, nombre)
+            return True
+
+        if dueño == user_id:
+            return True
+
+        registrar_evento(
+            f"{nombre}: {control_nombre} ya envio una orden, revisar que el porton esta abriendo/cerrando."
+        )
+
+        return False
 
 def registrar_evento(texto):
     with state_lock:
@@ -523,6 +567,10 @@ def relay_on(ack, body, client):
         registrar_evento(f"{nombre} - Usuario no registrado")
         actualizar_home_para_todos(client)
         return
+    
+    if not usuario_puede_operar(user_id, nombre):
+        actualizar_home_para_todos(client)
+        return
 
     if send_pulse():
         registrar_evento(f"{nombre} - PULSO")
@@ -540,6 +588,10 @@ def relay_intermediate(ack, body, client):
 
     if not usuario_autorizado(user_id):
         registrar_evento(f"{nombre} - Usuario no registrado")
+        actualizar_home_para_todos(client)
+        return
+
+    if not usuario_puede_operar(user_id, nombre):
         actualizar_home_para_todos(client)
         return
 
