@@ -262,7 +262,7 @@ def tomar_control(user_id, nombre):
         seconds=CONTROL_TIMEOUT_SECONDS
     )
 
-def usuario_puede_operar(user_id, nombre):
+def usuario_puede_operar(user_id, nombre, client):
     with state_lock:
         dueño = verificar_control_activo()
 
@@ -278,6 +278,7 @@ def usuario_puede_operar(user_id, nombre):
     registrar_evento(
         f"{nombre}: {bloqueado_por} ya envio una orden, revisar que el porton esta abriendo/cerrando."
     )
+    actualizar_home_para_todos(client)
 
     return False
 
@@ -570,7 +571,7 @@ def relay_on(ack, body, client):
         actualizar_home_para_todos(client)
         return
     
-    if not usuario_puede_operar(user_id, nombre):
+    if not usuario_puede_operar(user_id, nombre, client):
         actualizar_home_para_todos(client)
         return
 
@@ -593,7 +594,7 @@ def relay_intermediate(ack, body, client):
         actualizar_home_para_todos(client)
         return
 
-    if not usuario_puede_operar(user_id, nombre):
+    if not usuario_puede_operar(user_id, nombre, client):
         actualizar_home_para_todos(client)
         return
 
